@@ -1,16 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 
+templates = Jinja2Templates(directory="templates")
+
 @app.get("/", response_class=HTMLResponse)
-async def read_items():
-    return """
-    <html>
-        <head><title>Pomodoro Timer</title></head>
-        <body>
-            <h1>ポモドーロタイマー作成開始！</h1>
-            <p>ここをフロントエンド（HTML/CSS）にしていきます。</p>
-        </body>
-    </html>
-    """
+async def read_root(request: Request):
+    # index.htmlを読み込んで表示
+    return templates.TemplateResponse("index.html", {"request": request})
