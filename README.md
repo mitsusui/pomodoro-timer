@@ -33,3 +33,7 @@ You need to install uv before doing the following steps.
 
 6. Create a new feature of HTML response to a simple FastAPI request
     You should change your main.py to response with HTML displayed in a browser when client call a request to uvicorn. This will be a base of the pomodoro-timer app.
+
+7. Use ninja2 library to separate python and HTML
+    ninja2 library allows you to separate html contents from Python login part.
+    You can see HTML content is inserted into the response
