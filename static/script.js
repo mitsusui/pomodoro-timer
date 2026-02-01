@@ -75,16 +75,19 @@ function update() {
     if (phase === 'init') {
         leftSeconds = workDuration;
         t.innerText = "25:00";
+        readyText.textContent = "Are you ready?";
         readyText.style.visibility = "visible";
         renderCircle(1, "#526fff", "#363a56");
     } else if (phase === 'work' || phase === 'work-paused') {
-        readyText.style.visibility = "hidden";
+        readyText.textContent = "Focus";
+        readyText.style.visibility = "visible";
         let lsec = leftSeconds;
         t.innerText = `${pad(Math.floor(lsec/60))}:${pad(lsec%60)}`;
         const progress = leftSeconds / workDuration;
         renderCircle(progress, "#526fff", "#363a56");
     } else if (phase === 'rest' || phase === 'rest-paused') {
-        readyText.style.visibility = "hidden";
+        readyText.textContent = "Relax";
+        readyText.style.visibility = "visible";
         t.innerText = `${pad(Math.floor(leftSeconds/60))}:${pad(leftSeconds%60)}`;
         const progress = leftSeconds / restDuration;
         renderCircle(progress, "#1ec28d", "#363a56");
@@ -137,6 +140,10 @@ function resumeWork() {
 }
 
 function startRest() {
+    // 集中→休憩に切り替わったタイミングで完了として記録
+    fetch('/notify', { method: 'POST' })
+        .then(() => showCongratulationToast())
+        .catch(() => {});
     phase = 'rest';
     pausedSeconds = 0;
     leftSeconds = restDuration;
@@ -178,14 +185,12 @@ function confirmFinish() {
     }
 }
 
-// Plyer notification via backend (AJAX call)
+// FINISHボタン: 記録はせずにタイマーだけリセット（Completedは集中→休憩時のみカウント）
 function finishAndNotify() {
     phase = 'init';
     if (timer) clearTimeout(timer);
     renderButtons();
     update();
-    fetch('/notify', {method:"POST"})
-        .then(() => showCongratulationToast());
 }
 
 function showCongratulationToast() {
@@ -213,6 +218,56 @@ function showCongratulationToast() {
     }
 }
 
+function renderLogs() {
+    fetch('/logs')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('log-goal').textContent = '目標: ' + data.goal_rounds + '周のポモドーロ';
+            const countEl = document.getElementById('log-count');
+            const iconEl = document.getElementById('log-achieved-icon');
+            const textEl = countEl.querySelector('.log-count-text');
+            textEl.textContent = '完了: ' + data.completed_count + '回';
+            if (data.completed_count >= data.goal_rounds && data.goal_rounds > 0) {
+                iconEl.textContent = '🏆';
+                iconEl.classList.add('is-visible');
+            } else {
+                iconEl.textContent = '';
+                iconEl.classList.remove('is-visible');
+            }
+            const ul = document.getElementById('log-times');
+            ul.innerHTML = '';
+            data.completed_times.forEach((t, i) => {
+                const li = document.createElement('li');
+                li.textContent = (i + 1) + '回目: ' + t;
+                ul.appendChild(li);
+            });
+        })
+        .catch(() => {});
+}
+
+function closeRecordOverlay() {
+    const section = document.getElementById('log-section');
+    const btn = document.getElementById('log-toggle-btn');
+    if (!section.classList.contains('is-hidden')) {
+        section.classList.add('is-hidden');
+        btn.textContent = 'Show Record';
+        document.body.classList.remove('record-overlay-open');
+    }
+}
+
+function toggleLogSection() {
+    const section = document.getElementById('log-section');
+    const btn = document.getElementById('log-toggle-btn');
+    if (section.classList.contains('is-hidden')) {
+        renderLogs();
+        section.classList.remove('is-hidden');
+        btn.textContent = 'Close Record';
+        document.body.classList.add('record-overlay-open');
+    } else {
+        closeRecordOverlay();
+    }
+}
+
 // Request notification permission on load
 if (window.Notification && Notification.permission !== "granted") {
     Notification.requestPermission();
@@ -221,6 +276,9 @@ if (window.Notification && Notification.permission !== "granted") {
 window.onload = function() {
     renderButtons();
     update();
+    document.getElementById('log-toggle-btn').onclick = toggleLogSection;
+    document.getElementById('log-close-btn').onclick = closeRecordOverlay;
+    document.getElementById('log-overlay-backdrop').onclick = closeRecordOverlay;
     // responsive canvas
     function resizeCanvas() {
         let canvas = document.getElementById('timer-canvas');

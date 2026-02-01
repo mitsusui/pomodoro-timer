@@ -1,0 +1,10 @@
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: pomodoro_db
+    ports:
+      - "5433:5432" #Windowsホスト環境にもPostgreSQLが存在しているため、Port5433を使用する

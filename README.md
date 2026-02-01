@@ -34,6 +34,16 @@ You need to install uv before doing the following steps.
 6. Create a new feature of HTML response to a simple FastAPI request
     You should change your main.py to response with HTML displayed in a browser when client call a request to uvicorn. This will be a base of the pomodoro-timer app.
 
-7. Use ninja2 library to separate python and HTML
-    ninja2 library allows you to separate html contents from Python login part.
+7. Use jinja2 library to separate python and HTML
+    Jinja2 library allows you to separate html contents from Python login part.
     You can see HTML content is inserted into the response
+
+8. Build pomodoro-timer
+    Create 4 files such as main.py, index.html, style.css, script.js to realise pomodoro-timer. However, I don't understand details of this project, so I need to read code later.
+    I could give an instruction to cursor to make them files exist separetely to manage them with ease.
+
+9. Use plyer (server notification) and browser notification(client)
+    When user click the button of STOP, notify request should be called and server notification will work to respond it. Also, it has client notification method. That's why you can see both notification now.
+
+10. Update Pomodoro-timer app
+    Added log function to show completed work log which shows completetion time of the day. You can open the log window by clicking the show log button below the timer. The data shown in the window comes from PostgreSQL database runnning in a docker container of my host computer.

@@ -12,6 +12,17 @@
         <canvas id="timer-canvas" width="300" height="300" style="position: relative;"></canvas>
         <div class="time-text" id="time-text">25:00</div>
         <div class="button-row" id="button-row"></div>
+        <button type="button" class="mod-btn log-toggle-btn" id="log-toggle-btn">Show Record</button>
     </div>
+    <section class="log-overlay is-hidden" id="log-section" aria-label="Record">
+        <div class="log-overlay-backdrop" id="log-overlay-backdrop"></div>
+        <div class="log-panel">
+            <h2 class="log-title">Record</h2>
+            <p class="log-goal" id="log-goal">目標: 5周のポモドーロ</p>
+            <p class="log-count" id="log-count"><span class="log-achieved-icon" id="log-achieved-icon" aria-hidden="true"></span><span class="log-count-text">完了: 0回</span></p>
+            <ul class="log-times" id="log-times"></ul>
+            <button type="button" class="mod-btn log-close-btn" id="log-close-btn">Close Record</button>
+        </div>
+    </section>
     <script src="/static/script.js"></script>
 </body>
