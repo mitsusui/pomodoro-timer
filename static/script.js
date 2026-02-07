@@ -1,7 +1,15 @@
 // Parameters
 const workDuration = 25 * 60; // seconds
 const restDuration = 5 * 60;
-let phase = 'init'; // init, work, work-paused, rest, rest-paused
+// 状態を定義する定数オブジェクト
+const PHASE = {
+    INIT: 'init',
+    WORK: 'work',
+    WORK_PAUSED: 'work-paused',
+    REST: 'rest',
+    REST_PAUSED: 'rest-paused'
+};
+let phase = PHASE.INIT; // init, work, work-paused, rest, rest-paused
 let timer = null;
 let startTimestamp = null;
 let pausedSeconds = 0;
@@ -12,9 +20,12 @@ function pad(n) {
     return n < 10 ? '0'+n : n;
 }
 
+//
 function renderCircle(progress=1, color='#526fff', bg='#2f3256') {
     const c = document.getElementById('timer-canvas');
+    // context for 2d drawing(rendering)
     const ctx = c.getContext('2d');
+    // eraser function of the context
     ctx.clearRect(0,0,c.width,c.height);
 
     // Draw BG arc
@@ -27,7 +38,7 @@ function renderCircle(progress=1, color='#526fff', bg='#2f3256') {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Draw arc (if active timer) — 時計回りに消えるよう始点を時計回りに移動
+    // Draw arc (if active timer) — move begin point to earse counter clock-wise
     if (progress < 1) {
         ctx.beginPath();
         const startAngle = 3*Math.PI/2 - progress*2*Math.PI;
@@ -40,52 +51,58 @@ function renderCircle(progress=1, color='#526fff', bg='#2f3256') {
     }
 }
 
+// Add appropriate buttons in the button-row div
 function renderButtons() {
     const row = document.getElementById('button-row');
     row.innerHTML = '';
-    if (phase === 'init') {
+
+    // default phase is init defined at the top
+    if (phase === PHASE.INIT) {
         row.appendChild(makeButton('START', startWork, 'mod-btn'));
-    } else if (phase === 'work') {
+    } else if (phase === PHASE.WORK) {
         row.appendChild(makeButton('PAUSE', pauseWork, 'mod-btn'));
         row.appendChild(makeButton('FINISH', confirmFinish, 'mod-btn finish'));
-    } else if (phase === 'work-paused') {
+    } else if (phase === PHASE.WORK_PAUSED) {
         row.appendChild(makeButton('RESUME', resumeWork, 'mod-btn'));
         row.appendChild(makeButton('FINISH', confirmFinish, 'mod-btn finish'));
-    } else if (phase === 'rest') {
+    } else if (phase === PHASE.REST) {
         row.appendChild(makeButton('PAUSE', pauseBreak, 'mod-btn'));
         row.appendChild(makeButton('FINISH', confirmFinish, 'mod-btn finish'));
-    } else if (phase === 'rest-paused') {
+    } else if (phase === PHASE.REST_PAUSED) {
         row.appendChild(makeButton('RESUME', resumeBreak, 'mod-btn'));
         row.appendChild(makeButton('FINISH', confirmFinish, 'mod-btn finish'));
     }
 }
 
+// Make button heml element requested from renderButtons
 function makeButton(label, handler, cls='') {
     const btn = document.createElement('button');
     btn.innerText = label;
     btn.className = cls;
+    // handler represents other functions defined in this file
     btn.onclick = handler;
     return btn;
 }
 
+// Update main info and circle counter
 function update() {
     // Control text, circle, ready-text and time
     const readyText = document.getElementById('ready-text');
     const t = document.getElementById('time-text');
-    if (phase === 'init') {
+    if (phase === PHASE.INIT) {
         leftSeconds = workDuration;
         t.innerText = "25:00";
         readyText.textContent = "Are you ready?";
         readyText.style.visibility = "visible";
         renderCircle(1, "#526fff", "#363a56");
-    } else if (phase === 'work' || phase === 'work-paused') {
+    } else if (phase === PHASE.WORK || phase === WORK_PAUSED) {
         readyText.textContent = "Focus";
         readyText.style.visibility = "visible";
         let lsec = leftSeconds;
         t.innerText = `${pad(Math.floor(lsec/60))}:${pad(lsec%60)}`;
         const progress = leftSeconds / workDuration;
         renderCircle(progress, "#526fff", "#363a56");
-    } else if (phase === 'rest' || phase === 'rest-paused') {
+    } else if (phase === PHASE.REST || phase === PHASE.REST_PAUSED) {
         readyText.textContent = "Relax";
         readyText.style.visibility = "visible";
         t.innerText = `${pad(Math.floor(leftSeconds/60))}:${pad(leftSeconds%60)}`;
@@ -94,15 +111,16 @@ function update() {
     }
 }
 
+// tick (counter process)
 function tick() {
-    if (phase === 'work') {
+    if (phase === PHASE.WORK) {
         leftSeconds = workDuration - pausedSeconds - Math.floor((Date.now() - startTimestamp)/1000);
         if (leftSeconds <= 0) {
             leftSeconds = 0;
             startRest();
             return;
         }
-    } else if (phase === 'rest') {
+    } else if (phase === PHASE.REST) {
         leftSeconds = restDuration - pausedSeconds - Math.floor((Date.now() - startTimestamp)/1000);
         if (leftSeconds <= 0) {
             finishCycle();
@@ -110,29 +128,31 @@ function tick() {
         }
     }
     update();
+    // execute tick function every 1 sec
     timer = setTimeout(tick, 1000);
 }
 
 function startWork() {
-    phase = 'work';
+    phase = PHASE.WORK;
     pausedSeconds = 0;
     leftSeconds = workDuration;
     startTimestamp = Date.now();
     renderButtons();
     update();
+    // start counter
     tick();
 }
 
 function pauseWork() {
     pausedSeconds += Math.floor((Date.now() - startTimestamp)/1000);
-    phase = 'work-paused';
+    phase = PHASE.WORK_PAUSED;
     renderButtons();
     update();
     if (timer) clearTimeout(timer);
 }
 
 function resumeWork() {
-    phase = 'work';
+    phase = PHASE.WORK_PAUSED;
     startTimestamp = Date.now();
     renderButtons();
     update();
@@ -140,11 +160,11 @@ function resumeWork() {
 }
 
 function startRest() {
-    // 集中→休憩に切り替わったタイミングで完了として記録
+    // record completion time when the statsus switches
     fetch('/notify', { method: 'POST' })
         .then(() => showCongratulationToast())
         .catch(() => {});
-    phase = 'rest';
+    phase = PHASE.REST;
     pausedSeconds = 0;
     leftSeconds = restDuration;
     startTimestamp = Date.now();
@@ -155,14 +175,14 @@ function startRest() {
 
 function pauseBreak() {
     pausedSeconds += Math.floor((Date.now() - startTimestamp)/1000);
-    phase = 'rest-paused';
+    phase = PHASE.REST_PAUSED;
     renderButtons();
     update();
     if (timer) clearTimeout(timer);
 }
 
 function resumeBreak() {
-    phase = 'rest';
+    phase = PHASE.REST;
     startTimestamp = Date.now();
     renderButtons();
     update();
@@ -171,7 +191,7 @@ function resumeBreak() {
 
 function finishCycle() {
     // Reset all
-    phase = 'init';
+    phase = PHASE.INIT;
     pausedSeconds = 0;
     leftSeconds = workDuration;
     if (timer) clearTimeout(timer);
@@ -185,13 +205,14 @@ function confirmFinish() {
     }
 }
 
-// FINISHボタン: 記録はせずにタイマーだけリセット（Completedは集中→休憩時のみカウント）
+// FINISH button: Reset timer without recording
 function finishAndNotify() {
-    phase = 'init';
+    phase = PHASE.INIT;
     if (timer) clearTimeout(timer);
     renderButtons();
     update();
 }
+
 
 function showCongratulationToast() {
     // Show simple JS banner as fallback
@@ -273,6 +294,8 @@ if (window.Notification && Notification.permission !== "granted") {
     Notification.requestPermission();
 }
 
+
+// Execute when window loaded
 window.onload = function() {
     renderButtons();
     update();
