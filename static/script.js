@@ -152,7 +152,7 @@ function pauseWork() {
 }
 
 function resumeWork() {
-    phase = PHASE.WORK_PAUSED;
+    phase = PHASE.WORK;
     startTimestamp = Date.now();
     renderButtons();
     update();
@@ -289,6 +289,173 @@ function toggleLogSection() {
     }
 }
 
+// --- Analysis section ---
+let analysisYear = new Date().getFullYear();
+let analysisMonth = new Date().getMonth() + 1;
+let analysisChartType = 'bar';
+let lastAnalysisData = { daily_counts: [], year: null, month: null };
+
+function closeAnalysisOverlay() {
+    const section = document.getElementById('analysis-section');
+    const btn = document.getElementById('analysis-toggle-btn');
+    if (!section.classList.contains('is-hidden')) {
+        section.classList.add('is-hidden');
+        btn.textContent = 'Show Results';
+        document.body.classList.remove('analysis-overlay-open');
+    }
+}
+
+function openAnalysisOverlay() {
+    const section = document.getElementById('analysis-section');
+    const btn = document.getElementById('analysis-toggle-btn');
+    if (section.classList.contains('is-hidden')) {
+        section.classList.remove('is-hidden');
+        btn.textContent = 'Close Results';
+        document.body.classList.add('analysis-overlay-open');
+        loadAnalysisData();
+    } else {
+        closeAnalysisOverlay();
+    }
+}
+
+function loadAnalysisData() {
+    document.getElementById('analysis-month-label').textContent =
+        analysisYear + '-' + String(analysisMonth).padStart(2, '0');
+    fetch('/analysis?year=' + analysisYear + '&month=' + analysisMonth)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('analysis-total-count').textContent = data.total_count;
+            const gap = data.goal_gap;
+            document.getElementById('analysis-goal-gap').textContent =
+                (gap >= 0 ? '+' : '') + gap;
+            const h = Math.floor(data.total_minutes / 60);
+            const m = data.total_minutes % 60;
+            document.getElementById('analysis-total-time').textContent =
+                h + 'h ' + String(m).padStart(2, '0') + 'm';
+            document.getElementById('analysis-weekday-avg').textContent = data.weekday_avg;
+            document.getElementById('analysis-weekend-avg').textContent = data.weekend_avg;
+            document.getElementById('analysis-morning-count').textContent = data.morning_count;
+            document.getElementById('analysis-afternoon-count').textContent = data.afternoon_count;
+            document.getElementById('analysis-night-count').textContent = data.night_count;
+            lastAnalysisData = { daily_counts: data.daily_counts, year: data.year, month: data.month };
+            drawAnalysisGraph();
+        })
+        .catch(() => {
+            document.getElementById('analysis-total-count').textContent = '0';
+            document.getElementById('analysis-goal-gap').textContent = '0';
+            document.getElementById('analysis-total-time').textContent = '0h 00m';
+            document.getElementById('analysis-weekday-avg').textContent = '0';
+            document.getElementById('analysis-weekend-avg').textContent = '0';
+            document.getElementById('analysis-morning-count').textContent = '0';
+            document.getElementById('analysis-afternoon-count').textContent = '0';
+            document.getElementById('analysis-night-count').textContent = '0';
+            lastAnalysisData = { daily_counts: [], year: analysisYear, month: analysisMonth };
+            drawAnalysisGraph();
+        });
+}
+
+const ANALYSIS_CHART_WIDTH = 620;
+const ANALYSIS_CHART_HEIGHT = 220;
+
+function drawAnalysisGraph() {
+    const canvas = document.getElementById('analysis-graph');
+    const cw = ANALYSIS_CHART_WIDTH;
+    const ch = ANALYSIS_CHART_HEIGHT;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(cw * dpr);
+    canvas.height = Math.floor(ch * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cw, ch);
+    const dailyCounts = lastAnalysisData.daily_counts || [];
+    const n = dailyCounts.length;
+    const padLeft = 28;
+    const padRight = 12;
+    const padTop = 8;
+    const padBottom = 24;
+    const chartW = cw - padLeft - padRight;
+    const chartH = ch - padTop - padBottom;
+    if (n === 0) {
+        ctx.fillStyle = '#979dcf';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('データがありません', cw / 2, ch / 2);
+        return;
+    }
+    const maxVal = Math.max(1, Math.max.apply(null, dailyCounts));
+    const barGap = 1;
+    const barW = Math.max(1, (chartW - (n - 1) * barGap) / n);
+    const stepX = barW + barGap;
+    const zeroY = padTop + chartH;
+    if (analysisChartType === 'bar') {
+        for (let i = 0; i < n; i++) {
+            const x = padLeft + i * stepX;
+            const rh = (dailyCounts[i] / maxVal) * chartH;
+            const y = zeroY - rh;
+            ctx.fillStyle = '#526fff';
+            ctx.fillRect(x, y, barW, rh);
+        }
+    } else {
+        ctx.beginPath();
+        ctx.strokeStyle = '#526fff';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        for (let i = 0; i < n; i++) {
+            const x = padLeft + (i + 0.5) * stepX;
+            const rh = (dailyCounts[i] / maxVal) * chartH;
+            const y = zeroY - rh;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#526fff';
+        for (let i = 0; i < n; i++) {
+            const x = padLeft + (i + 0.5) * stepX;
+            const rh = (dailyCounts[i] / maxVal) * chartH;
+            const y = zeroY - rh;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    ctx.fillStyle = '#979dcf';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    const labelStep = n <= 15 ? 1 : Math.ceil(n / 8);
+    for (let i = 0; i < n; i += labelStep) {
+        const x = padLeft + (i + 0.5) * stepX;
+        ctx.fillText(i + 1, x, ch - 6);
+    }
+}
+
+function setAnalysisChartType(type) {
+    analysisChartType = type;
+    document.getElementById('chart-type-bar').classList.toggle('active', type === 'bar');
+    document.getElementById('chart-type-bar').setAttribute('aria-pressed', type === 'bar');
+    document.getElementById('chart-type-line').classList.toggle('active', type === 'line');
+    document.getElementById('chart-type-line').setAttribute('aria-pressed', type === 'line');
+    drawAnalysisGraph();
+}
+
+function analysisPrevMonth() {
+    analysisMonth -= 1;
+    if (analysisMonth < 1) {
+        analysisMonth = 12;
+        analysisYear -= 1;
+    }
+    loadAnalysisData();
+}
+
+function analysisNextMonth() {
+    analysisMonth += 1;
+    if (analysisMonth > 12) {
+        analysisMonth = 1;
+        analysisYear += 1;
+    }
+    loadAnalysisData();
+}
+
 // Request notification permission on load
 if (window.Notification && Notification.permission !== "granted") {
     Notification.requestPermission();
@@ -302,6 +469,13 @@ window.onload = function() {
     document.getElementById('log-toggle-btn').onclick = toggleLogSection;
     document.getElementById('log-close-btn').onclick = closeRecordOverlay;
     document.getElementById('log-overlay-backdrop').onclick = closeRecordOverlay;
+    document.getElementById('analysis-toggle-btn').onclick = openAnalysisOverlay;
+    document.getElementById('analysis-close-btn').onclick = closeAnalysisOverlay;
+    document.getElementById('analysis-overlay-backdrop').onclick = closeAnalysisOverlay;
+    document.getElementById('prev-month-btn').onclick = analysisPrevMonth;
+    document.getElementById('next-month-btn').onclick = analysisNextMonth;
+    document.getElementById('chart-type-bar').onclick = function() { setAnalysisChartType('bar'); };
+    document.getElementById('chart-type-line').onclick = function() { setAnalysisChartType('line'); };
     // responsive canvas
     function resizeCanvas() {
         let canvas = document.getElementById('timer-canvas');

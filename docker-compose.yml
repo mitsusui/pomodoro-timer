@@ -7,4 +7,12 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: pomodoro_db
     ports:
-      - "5433:5432" #Windowsホスト環境にもPostgreSQLが存在しているため、Port5433を使用する
+      - "5433:5432" # Windowsホスト環境にもPostgreSQLが存在しているため、Port5433を使用する
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data # DBデータの永続化
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d pomodoro_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

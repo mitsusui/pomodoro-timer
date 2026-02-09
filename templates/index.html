@@ -24,5 +24,57 @@
             <button type="button" class="mod-btn log-close-btn" id="log-close-btn">Close Record</button>
         </div>
     </section>
+    <section class="analysis-overlay is-hidden" id="analysis-section" aria-label="Analysis">
+        <div class="analysis-overlay-backdrop" id="analysis-overlay-backdrop"></div>
+        <div class="analysis-panel">
+            <h2 class="analysis-title">Results Analysis</h2>
+            <div class="analysis-controls">
+                <button type="button" class="mod-btn" id="prev-month-btn">< Prev</button>
+                <span id="analysis-month-label">YYYY-MM</span>
+                <button type="button" class="mod-btn" id="next-month-btn">Next ></button>
+            </div>
+            <div class="analysis-chart-toggle">
+                <button type="button" class="mod-btn active" id="chart-type-bar" aria-pressed="true">Barchart</button>
+                <button type="button" class="mod-btn" id="chart-type-line" aria-pressed="false">Linechart</button>
+            </div>
+            <div class="analysis-graph-box">
+                <canvas id="analysis-graph" width="620" height="220" aria-label="今月のポモドーロ達成回数グラフ"></canvas>
+            </div>
+            <div class="analysis-summary" id="analysis-summary">
+                <h3>Summary</h3>
+                <ul style="display: flex; gap: 14px; padding: 0; margin: 0; list-style: none;">
+                    <li style="margin: 0;">Total Pomodoro completion: <span id="analysis-total-count">0</span> times</li>
+                    <li style="margin: 0;">Gap: <span id="analysis-goal-gap">0</span> times</li>
+                    <li style="margin: 0;">Total working hour: <span id="analysis-total-time">0h 00m</span></li>
+                </ul>
+            </div>
+            <div class="analysis-detail" id="analysis-detail">
+                <h3>Analysis</h3>
+                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+                    <span style="font-weight:600;">Weekday</span>
+                    <span style="background:var(--accent-light); border-radius:6px; padding:4px 12px; margin-right:8px;">
+                        <span id="analysis-weekday-avg" style="font-weight:bold; color:var(--highlight);">0</span> times/day
+                    </span>
+                    <span style="font-weight:600;">Weekend</span>
+                    <span style="background:var(--highlight-bg); border-radius:6px; padding:4px 12px;">
+                        <span id="analysis-weekend-avg" style="font-weight:bold; color:var(--highlight);">0</span> times/day
+                    </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <span style="background:var(--accent-bg-light); border-radius:6px; display:flex; align-items:center;">
+                        Morning: <span id="analysis-morning-count" style="font-weight:bold; color:var(--accent-success); margin:0 2px 0 6px;">0</span> times
+                    </span>
+                    <span style="background:var(--accent-bg-middle); border-radius:6px; display:flex; align-items:center;">
+                        Afternoon: <span id="analysis-afternoon-count" style="font-weight:bold; color:var(--accent-warning); margin:0 2px 0 6px;">0</span> times
+                    </span>
+                    <span style="background:var(--accent-bg-dark); border-radius:6px; display:flex; align-items:center;">
+                        Night: <span id="analysis-night-count" style="font-weight:bold; color:var(--accent-night); margin:0 2px 0 6px;">0</span> times
+                    </span>
+                </div>
+            </div>
+            <button type="button" class="mod-btn analysis-close-btn" id="analysis-close-btn">Close</button>
+        </div>
+    </section>
+    <button type="button" class="mod-btn analysis-toggle-btn" id="analysis-toggle-btn">Show Results</button>
     <script src="/static/script.js"></script>
 </body>

@@ -189,6 +189,130 @@ body.record-overlay-open {
     margin-top: 4px;
 }
 
+/* Analysis overlay */
+body.analysis-overlay-open {
+    overflow: hidden;
+}
+.analysis-overlay.is-hidden {
+    display: none;
+}
+.analysis-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.analysis-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.analysis-panel {
+    position: relative;
+    width: 100%;
+    max-width: 620px;
+    max-height: min(90vh, 640px);
+    padding: 24px 20px;
+    background: var(--primary);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+}
+.analysis-panel .analysis-title {
+    margin: 0 0 16px 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    letter-spacing: 0.04em;
+}
+.analysis-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.analysis-controls .mod-btn {
+    padding: 8px 16px;
+    font-size: 0.95rem;
+}
+#analysis-month-label {
+    min-width: 80px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-main);
+}
+.analysis-graph-box {
+    width: 100%;
+    height: 420px;
+    min-width: 620px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+    background: var(--secondary);
+    padding: 12px;
+    box-sizing: border-box;
+    overflow-x: auto;
+}
+#analysis-graph {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+    /* height: auto; */
+    /* aspect-ratio: 31 / 11; */
+}
+.analysis-chart-toggle {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+.analysis-chart-toggle .mod-btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+}
+.analysis-chart-toggle .mod-btn.active {
+    background: var(--accent);
+    color: var(--primary);
+}
+.analysis-summary,
+.analysis-detail {
+    width: 100%;
+    margin-bottom: 12px;
+    text-align: left;
+}
+.analysis-summary h3,
+.analysis-detail h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+.analysis-summary ul,
+.analysis-detail ul {
+    margin: 0;
+    padding-left: 1.2em;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+.analysis-close-btn {
+    margin-top: 8px;
+}
+.analysis-toggle-btn {
+    margin-top: 20px;
+    opacity: 0.9;
+}
+
 @media (max-width: 470px) {
     .timer-container {
         padding: 16vw 4vw;
@@ -198,5 +322,18 @@ body.record-overlay-open {
         height: 90vw !important;
         max-width: 96vw;
         max-height: 96vw;
+    }
+    #analysis-graph {
+        width: 98vw !important;
+        max-width: 98vw !important;
+        height: auto !important;
+        min-height: 120px;
+        box-sizing: border-box;
+        display: block;
+    }
+    .analysis-summary,
+    .analysis-detail {
+        overflow-x: auto;
+        max-width: 100vw;
     }
 }

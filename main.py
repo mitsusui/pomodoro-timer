@@ -1,13 +1,20 @@
 import os
+import time
+import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from calendar import monthrange
 from datetime import datetime, date, timedelta, timezone
+from collections import defaultdict
 from typing import Optional
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from plyer import notification
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Define DB model(schema): class info is saved in metadata(SQLModel.metadata)
 class PomodoroLog(SQLModel, table=True):
@@ -18,15 +25,31 @@ class PomodoroLog(SQLModel, table=True):
     #default value is "Work session"
     task_name: str = Field(default="Work session")
 
-# Connection setteings
+# Connection settings
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+# PostgreSQL の起動待ちのため接続タイムアウトを長めに
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"connect_timeout": 10},
+    pool_pre_ping=True,  # 接続の有効性を確認してから使う
+)
 
 
-# Check existing table name and create table if the same table does not exist
 def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+    """テーブルがなければ作成する。PostgreSQL 起動待ちのためリトライする。"""
+    max_retries = 10
+    for attempt in range(1, max_retries + 1):
+        try:
+            SQLModel.metadata.create_all(engine)
+            logger.info("Database tables created or already exist.")
+            return
+        except Exception as e:
+            logger.warning("Database not ready (attempt %d/%d): %s", attempt, max_retries, e)
+            if attempt == max_retries:
+                logger.error("Could not connect to database after %d attempts.", max_retries)
+                raise
+            time.sleep(2)
 
 # app instance will be associated with all commands
 app = FastAPI()
@@ -85,4 +108,59 @@ async def get_logs():
         "goal_rounds": POMODORO_GOAL_ROUNDS,
         "completed_count": len(completed_times),
         "completed_times": completed_times,
+    }
+
+
+@app.get("/analysis")
+async def get_analysis(year: int, month: int):
+    """指定月のポモドーロ集計（日別回数・合計・平日/休日平均・時間帯別）。timestamp は UTC で集計。"""
+    month_start = datetime(year, month, 1, tzinfo=timezone.utc)
+    _, last_day = monthrange(year, month)
+    month_end = datetime(year, month, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc) + timedelta(seconds=1)
+    with Session(engine) as session:
+        rows = session.exec(
+            select(PomodoroLog)
+            .where(PomodoroLog.timestamp >= month_start, PomodoroLog.timestamp < month_end)
+            .order_by(PomodoroLog.timestamp)
+        ).all()
+    # 日別回数（UTC の日付で集計）
+    daily_counts = defaultdict(int)
+    weekday_counts = defaultdict(int)
+    weekend_counts = defaultdict(int)
+    morning = afternoon = night = 0
+    for r in rows:
+        d = r.timestamp.date()
+        daily_counts[d] += 1
+        wd = r.timestamp.weekday()
+        if wd < 5:
+            weekday_counts[d] += 1
+        else:
+            weekend_counts[d] += 1
+        h = r.timestamp.hour
+        if 5 <= h < 12:
+            morning += 1
+        elif 12 <= h < 17:
+            afternoon += 1
+        else:
+            night += 1
+    days_in_month = list(range(1, last_day + 1))
+    counts_by_day = [daily_counts.get(date(year, month, d), 0) for d in days_in_month]
+    weekday_days = sum(1 for d in days_in_month if datetime(year, month, d).weekday() < 5)
+    weekend_days = max(1, last_day - weekday_days)
+    total = len(rows)
+    weekday_total = sum(weekday_counts.values())
+    weekend_total = sum(weekend_counts.values())
+    return {
+        "year": year,
+        "month": month,
+        "goal_rounds": POMODORO_GOAL_ROUNDS,
+        "daily_counts": counts_by_day,
+        "total_count": total,
+        "goal_gap": total - (POMODORO_GOAL_ROUNDS * last_day) if last_day else 0,
+        "total_minutes": total * 25,
+        "weekday_avg": round(weekday_total / weekday_days, 1) if weekday_days else 0,
+        "weekend_avg": round(weekend_total / weekend_days, 1) if weekend_days else 0,
+        "morning_count": morning,
+        "afternoon_count": afternoon,
+        "night_count": night,
     }
